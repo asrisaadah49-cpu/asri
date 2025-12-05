@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuis Tipe Makan Ideal</title>
+    <!-- Memuat Tailwind CSS untuk styling cepat dan responsif -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Menggunakan font Inter sebagai standar */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 768px;
+            width: 100%;
+        }
+        .quiz-card {
+            background-color: #ffffff;
+            border-radius: 1.5rem; /* Sudut membulat */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 3rem 2rem;
+        }
+        .canvas-container {
+            width: 100%;
+            aspect-ratio: 16 / 9; /* Rasio standar untuk visualisasi */
+            border-radius: 0.75rem;
+            overflow: hidden;
+            border: 1px solid #e5e7eb;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .question-text {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 1.5rem;
+        }
+        .answer-button {
+            transition: all 0.2s;
+        }
+        .answer-button:hover {
+            background-color: #f3f4f6;
+            transform: translateY(-1px);
+        }
+        .answer-button.selected {
+            background-color: #d1fae5;
+            border-color: #10b981;
+            box-shadow: 0 0 0 2px #10b981;
+        }
+        /* Style untuk pesan hasil */
+        #result-display {
+            animation: fadeIn 0.5s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="quiz-card">
+            <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">Cari Tipe Makan Ideal Anda!</h1>
+            
+            <!-- Kontainer Canvas untuk visualisasi progress atau hasil -->
+            <div class="canvas-container mb-8">
+                <canvas id="quizCanvas"></canvas>
+            </div>
+
+            <div id="quiz-container">
+                <!-- Konten Kuis akan dimasukkan di sini oleh JavaScript -->
+            </div>
+
+            <div id="result-display" class="hidden mt-8 p-6 bg-green-50 border-l-4 border-green-400 rounded-lg">
+                <h2 class="text-2xl font-bold text-green-800 mb-4" id="result-title"></h2>
+                <p class="text-gray-700 mb-4" id="result-description"></p>
+                <button id="restart-button" class="w-full py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition duration-150">
+                    Ulangi Kuis
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Data Kuis ---
+        const questions = [
+            {
+                text: "Bagaimana perasaan Anda setelah makan siang besar dengan banyak karbohidrat (nasi/roti)?",
+                answers: [
+                    { text: "Penuh energi, siap bekerja.", score: { A: 1, B: 0, C: 0 } },
+                    { text: "Cepat mengantuk dan lemas.", score: { A: 0, B: 1, C: 0 } },
+                    { text: "Biasa saja, tergantung isinya.", score: { A: 0, B: 0, C: 1 } },
+                ]
+            },
+            {
+                text: "Seberapa sering Anda merasa lapar lagi setelah 2-3 jam makan?",
+                answers: [
+                    { text: "Sangat jarang.", score: { A: 1, B: 0, C: 0 } },
+                    { text: "Sering sekali, harus ngemil.", score: { A: 0, B: 1, C: 0 } },
+                    { text: "Terkadang, tergantung aktivitas.", score: { A: 0, B: 0, C: 1 } },
+                ]
+            },
+            {
+                text: "Apa prioritas utama Anda saat memilih makanan?",
+                answers: [
+                    { text: "Kualitas nutrisi dan bahan alami.", score: { A: 1, B: 0, C: 0 } },
+                    { text: "Rasa enak dan kenyang.", score: { A: 0, B: 1, C: 0 } },
+                    { text: "Fleksibilitas jadwal dan kepraktisan.", score: { A: 0, B: 0, C: 1 } },
+                ]
+            },
+            {
+                text: "Jika Anda terburu-buru, apa yang Anda pilih?",
+                answers: [
+                    { text: "Salad dengan protein atau buah.", score: { A: 1, B: 0, C: 0 } },
+                    { text: "Mie instan atau makanan cepat saji.", score: { A: 0, B: 1, C: 0 } },
+                    { text: "Skip makan atau protein bar.", score: { A: 0, B: 0, C: 1 } },
+                ]
+            }
+        ];
+
+        // Tipe Makan Hasil
+        const results = {
+            A: {
+                title: "Tipe Makanan Seimbang (Balanced Eater)",
+                description: "Tubuh Anda merespons baik terhadap pola makan yang teratur, kaya serat, dan memiliki komposisi makronutrisi yang seimbang (protein, karbohidrat kompleks, lemak sehat). Fokus pada makanan utuh (whole foods) akan menjaga energi Anda stabil sepanjang hari. Contoh: Diet Mediterania."
+            },
+            B: {
+                title: "Tipe Energi Instan (Carb-Sensitive)",
+                description: "Anda cenderung mengalami lonjakan dan penurunan energi yang cepat, seringkali karena sensitivitas terhadap karbohidrat sederhana. Mengurangi gula dan karbohidrat olahan, serta meningkatkan asupan protein dan lemak sehat, dapat membantu menstabilkan gula darah dan mengurangi rasa lapar. Contoh: Diet Rendah Karbohidrat/Ketogenik."
+            },
+            C: {
+                title: "Tipe Fleksibel (Intuitive Eater)",
+                description: "Anda memiliki kesadaran tubuh yang tinggi dan pola makan Anda harus fleksibel sesuai dengan kebutuhan dan sinyal lapar/kenyang tubuh. Tipe ini cocok untuk pola makan yang tidak terlalu ketat, fokus pada mendengarkan sinyal tubuh, dan memastikan makanan kaya nutrisi kapan pun Anda makan. Contoh: Intermittent Fasting (Makan sesuai jendela waktu) atau Mindful Eating."
+            }
+        };
+
+        // --- Variabel State ---
+        let currentQuestionIndex = 0;
+        let scores = { A: 0, B: 0, C: 0 };
+        let selectedAnswer = null; // Menyimpan indeks jawaban yang dipilih saat ini
+
+        // --- Elemen DOM ---
+        const quizContainer = document.getElementById('quiz-container');
+        const resultDisplay = document.getElementById('result-display');
+        const resultTitle = document.getElementById('result-title');
+        const resultDescription = document.getElementById('result-description');
+        const restartButton = document.getElementById('restart-button');
+        const canvas = document.getElementById('quizCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // --- Fungsi Canvas (Visualisasi) ---
+        function drawCanvas(progress, isResult = false) {
+            // Pastikan canvas memiliki ukuran yang benar (responsif)
+            const width = canvas.clientWidth;
+            const height = canvas.clientHeight;
+            canvas.width = width;
+            canvas.height = height;
+
+            ctx.clearRect(0, 0, width, height);
+
+            if (isResult) {
+                // Gambar untuk Hasil Akhir (Bar Chart Sederhana)
+                const totalScore = scores.A + scores.B + scores.C;
+                const scoreA = scores.A / totalScore || 0;
+                const scoreB = scores.B / totalScore || 0;
+                const scoreC = scores.C / totalScore || 0;
+
+                const barHeight = height * 0.7;
+                const barWidth = width * 0.2;
+                const startY = height - (height * 0.15);
+                const colors = ['#34d399', '#fcd34d', '#6366f1']; // Hijau, Kuning, Ungu
+
+                const drawBar = (x, h, color, label) => {
+                    const actualHeight = h * barHeight;
+                    // Batang
+                    ctx.fillStyle = color;
+                    ctx.fillRect(x, startY - actualHeight, barWidth, actualHeight);
+                    // Label
+                    ctx.fillStyle = '#1f2937';
+                    ctx.font = '14px Inter';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(label, x + barWidth / 2, startY + 20);
+                    // Nilai Persen
+                    ctx.font = '16px Inter Bold';
+                    ctx.fillText(`${(h * 100).toFixed(0)}%`, x + barWidth / 2, startY - actualHeight - 10);
+                };
+
+                drawBar(width * 0.15, scoreA, colors[0], 'Seimbang');
+                drawBar(width * 0.4, scoreB, colors[1], 'Instan');
+                drawBar(width * 0.65, scoreC, colors[2], 'Fleksibel');
+
+                // Garis Dasar
+                ctx.strokeStyle = '#9ca3af';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(width * 0.05, startY);
+                ctx.lineTo(width * 0.95, startY);
+                ctx.stroke();
+
+            } else {
+                // Gambar untuk Progress Kuis
+                const centerX = width / 2;
+                const centerY = height / 2;
+                const radius = Math.min(width, height) / 3;
+                
+                // Latar Belakang Lingkaran (Abu-abu)
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+                ctx.fillStyle = '#e5e7eb';
+                ctx.fill();
+
+                // Lingkaran Progres (Indigo)
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, -0.5 * Math.PI, (-0.5 * Math.PI) + (2 * Math.PI * progress));
+                ctx.lineTo(centerX, centerY);
+                ctx.fillStyle = '#6366f1';
+                ctx.fill();
+
+                // Lingkaran Tengah (Putih)
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius * 0.8, 0, 2 * Math.PI);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+
+                // Teks Progres
+                ctx.fillStyle = '#1f2937';
+                ctx.font = '30px Inter Bold';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`${Math.round(progress * 100)}%`, centerX, centerY - 15);
+                
+                ctx.font = '16px Inter';
+                ctx.fillText(`Soal ${currentQuestionIndex}/${questions.length}`, centerX, centerY + 20);
+            }
+        }
+
+
+        // --- Fungsi Kuis ---
+        
+        // Menghitung skor tertinggi untuk menentukan hasil
+        function calculateResult() {
+            let maxScore = -1;
+            let resultKey = 'A'; // Default
+            
+            for (const key in scores) {
+                if (scores[key] > maxScore) {
+                    maxScore = scores[key];
+                    resultKey = key;
+                }
+            }
+            // Jika ada seri, prioritaskan A (Balanced)
+            if (scores.A === scores.B && scores.A === scores.C) return 'A';
+            if (scores.A === scores.B && scores.A > scores.C) return 'A';
+            if (scores.A === scores.C && scores.A > scores.B) return 'A';
+            if (scores.B === scores.C && scores.B > scores.A) return 'B';
+            
+            return resultKey;
+        }
+
+        // Menampilkan hasil kuis
+        function showResult() {
+            quizContainer.classList.add('hidden');
+            const resultKey = calculateResult();
+            const result = results[resultKey];
+
+            resultTitle.textContent = result.title;
+            resultDescription.textContent = result.description;
+            resultDisplay.classList.remove('hidden');
+
+            drawCanvas(1, true); // Gambar hasil akhir di canvas
+        }
+
+        // Memproses jawaban yang dipilih
+        function selectAnswer(answerIndex) {
+            selectedAnswer = answerIndex;
+            // Tandai tombol yang dipilih
+            document.querySelectorAll('.answer-button').forEach((btn, index) => {
+                btn.classList.remove('selected', 'bg-indigo-500', 'text-white');
+                btn.classList.add('bg-white', 'text-gray-800', 'border-gray-300');
+                if (index === answerIndex) {
+                    btn.classList.add('selected', 'bg-indigo-500', 'text-white', 'border-indigo-500');
+                    btn.classList.remove('bg-white', 'text-gray-800', 'border-gray-300');
+                }
+            });
+            
+            // Aktifkan tombol Lanjut jika ada jawaban yang dipilih
+            const nextButton = document.getElementById('next-button');
+            if (nextButton) {
+                nextButton.disabled = false;
+                nextButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                nextButton.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+            }
+        }
+
+        // Pindah ke soal berikutnya
+        function nextQuestion() {
+            if (selectedAnswer !== null) {
+                // Terapkan skor dari jawaban yang dipilih
+                const currentQuestion = questions[currentQuestionIndex - 1];
+                const scoreChanges = currentQuestion.answers[selectedAnswer].score;
+                
+                for (const key in scoreChanges) {
+                    scores[key] += scoreChanges[key];
+                }
+
+                selectedAnswer = null; // Reset pilihan
+            }
+
+            if (currentQuestionIndex < questions.length) {
+                renderQuestion(currentQuestionIndex);
+                currentQuestionIndex++;
+            } else {
+                showResult();
+            }
+        }
+
+        // Render soal ke DOM
+        function renderQuestion(index) {
+            const question = questions[index];
+            const totalQuestions = questions.length;
+
+            let html = `
+                <p class="text-gray-500 mb-2">Soal ${index + 1} dari ${totalQuestions}</p>
+                <div class="question-text">${question.text}</div>
+                <div class="space-y-4 mb-6">
+            `;
+
+            question.answers.forEach((answer, i) => {
+                html += `
+                    <button class="answer-button w-full text-left p-4 border-2 border-gray-300 rounded-xl bg-white text-gray-800 font-medium shadow-sm transition duration-150" 
+                            onclick="selectAnswer(${i})">
+                        ${answer.text}
+                    </button>
+                `;
+            });
+
+            html += `
+                </div>
+                <button id="next-button" 
+                        class="w-full py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md transition duration-150"
+                        onclick="nextQuestion()"
+                        >
+                    Lanjut
+                </button>
+            `;
+
+            quizContainer.innerHTML = html;
+            
+            // Panggil fungsi selectAnswer sekali lagi untuk menambahkan event listener ke tombol
+            // (Walaupun sebenarnya sudah ada onclick di HTML, tapi ini memastikan DOM sudah ada)
+            document.getElementById('next-button').disabled = true;
+            document.getElementById('next-button').classList.add('opacity-50', 'cursor-not-allowed');
+            
+            // Perbarui visualisasi progress
+            drawCanvas(index / totalQuestions);
+        }
+
+        // Menginisialisasi/Mengulang kuis
+        function initQuiz() {
+            currentQuestionIndex = 0;
+            scores = { A: 0, B: 0, C: 0 };
+            selectedAnswer = null;
+
+            resultDisplay.classList.add('hidden');
+            quizContainer.classList.remove('hidden');
+            
+            nextQuestion(); // Memulai soal pertama
+            
+            // Set up listener resize untuk canvas (agar responsif)
+            window.addEventListener('resize', () => drawCanvas(currentQuestionIndex > 0 ? (currentQuestionIndex - 1) / questions.length : 0));
+        }
+
+        // Event Listener untuk tombol Ulangi Kuis
+        restartButton.addEventListener('click', initQuiz);
+        
+        // Memulai kuis saat halaman dimuat
+        initQuiz();
+
+    </script>
+
+</body>
+</html>
